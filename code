@@ -1,0 +1,44 @@
+//@version=4
+strategy("Custom Volume Strategy", overlay=true)
+
+// Input Variables
+baselinePeriod = input(10, title="Baseline Period")
+smoothingPeriod = input(10, title="Smoothing Period")
+buyThreshold = input(2, title="Buy Threshold")
+sellThreshold = input(-2, title="Sell Threshold")
+
+// Calculation Methodology
+baselineVolume = sma(volume, baselinePeriod)
+percentageDiff = ((volume - baselineVolume) / baselineVolume) * 100
+smoothedPercentageDiff = sma(percentageDiff, smoothingPeriod)
+
+// Generate Signals
+longCondition = crossover(smoothedPercentageDiff, buyThreshold)
+if (longCondition)
+    strategy.close("SELL")
+    strategy.entry("BUY", strategy.long)
+    
+shortCondition = crossunder(smoothedPercentageDiff, sellThreshold)
+if (shortCondition)
+    strategy.close("BUY")
+    strategy.entry("SELL", strategy.short)
+
+// Tracking trades
+var float winningTrades = 0
+var float losingTrades = 0
+if (strategy.position_size[1] > 0 and strategy.position_size == 0) // if was long and now flat
+    if (close > strategy.position_avg_price[1]) // if the close price is higher than the average price of the previous position
+        winningTrades := winningTrades + 1
+    else
+        losingTrades := losingTrades + 1
+if (strategy.position_size[1] < 0 and strategy.position_size == 0) // if was short and now flat
+    if (close < strategy.position_avg_price[1]) // if the close price is lower than the average price of the previous position
+        winningTrades := winningTrades + 1
+    else
+        losingTrades := losingTrades + 1
+
+// Calculate Win Rate
+totalTrades = winningTrades + losingTrades
+winRate = winningTrades / totalTrades * 100
+
+plot(winRate, title="Win Rate")
